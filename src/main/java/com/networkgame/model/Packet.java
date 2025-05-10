@@ -4,73 +4,93 @@ import java.awt.*;
 import java.awt.geom.Point2D;
 
 public abstract class Packet {
-    protected Point2D position;
-    protected Point2D velocity;
-    protected double noise;
-    protected double size;
-    protected Color color;
-    protected boolean isActive;
+    protected double x, y;
+    protected double targetX, targetY;
     protected double speed;
-    protected Point2D startPoint;
-    protected Point2D endPoint;
-    protected double progress;
+    protected double maxSpeed;
+    protected double acceleration;
+    protected double deceleration;
+    protected double noise;
+    protected Port targetPort;
+    protected boolean isMoving;
+    protected static final double IMPACT_THRESHOLD = 0.5;
+    protected static final double NOISE_THRESHOLD = 1.0;
+    protected static final double IMPACT_RADIUS = 50.0;
+    protected static final double IMPACT_FORCE = 0.5;
 
-    public Packet(Point2D startPoint, Point2D endPoint, double size, Color color) {
-        this.startPoint = startPoint;
-        this.endPoint = endPoint;
-        this.position = new Point2D.Double(startPoint.getX(), startPoint.getY());
-        this.size = size;
-        this.color = color;
-        this.isActive = true;
-        this.progress = 0;
+    public Packet(double x, double y, Port targetPort) {
+        this.x = x;
+        this.y = y;
+        this.targetPort = targetPort;
+        this.targetX = targetPort.getX();
+        this.targetY = targetPort.getY();
         this.noise = 0;
-        calculateVelocity();
+        this.isMoving = true;
+        this.speed = 0;
+        this.maxSpeed = 2.0;
+        this.acceleration = 0.1;
+        this.deceleration = 0.05;
     }
 
-    protected void calculateVelocity() {
-        double dx = endPoint.getX() - startPoint.getX();
-        double dy = endPoint.getY() - startPoint.getY();
+    public void update(double deltaTime) {
+        if (!isMoving) return;
+
+        // Calculate direction to target
+        double dx = targetX - x;
+        double dy = targetY - y;
         double distance = Math.sqrt(dx * dx + dy * dy);
-        this.velocity = new Point2D.Double(dx / distance * speed, dy / distance * speed);
+
+        if (distance < 5) {
+            isMoving = false;
+            return;
+        }
+
+        // Normalize direction
+        dx /= distance;
+        dy /= distance;
+
+        // Update speed with acceleration/deceleration
+        if (distance > 100) {
+            // Accelerate
+            speed = Math.min(speed + acceleration * deltaTime, maxSpeed);
+        } else {
+            // Decelerate
+            speed = Math.max(speed - deceleration * deltaTime, 0);
+        }
+
+        // Apply movement
+        x += dx * speed * deltaTime;
+        y += dy * speed * deltaTime;
     }
 
-    public void update() {
-        if (!isActive) return;
-        
-        progress += speed;
-        position.setLocation(
-            startPoint.getX() + (endPoint.getX() - startPoint.getX()) * progress,
-            startPoint.getY() + (endPoint.getY() - startPoint.getY()) * progress
-        );
+    public void applyImpact(Point2D impactPoint, double force) {
+        double dx = x - impactPoint.getX();
+        double dy = y - impactPoint.getY();
+        double distance = Math.sqrt(dx * dx + dy * dy);
 
-        if (progress >= 1.0) {
-            isActive = false;
+        if (distance < IMPACT_RADIUS) {
+            // Calculate impact force based on distance
+            double impactForce = force * (1 - distance / IMPACT_RADIUS);
+            
+            // Add noise based on impact force
+            noise += impactForce;
+            
+            // Apply deflection
+            double deflectionAngle = Math.atan2(dy, dx);
+            x += Math.cos(deflectionAngle) * impactForce * 10;
+            y += Math.sin(deflectionAngle) * impactForce * 10;
         }
     }
 
-    public void applyImpact(double impactForce, Point2D impactPoint) {
-        double distance = position.distance(impactPoint);
-        if (distance < size * 2) {
-            noise += impactForce * (1 - distance / (size * 2));
-            if (noise > size) {
-                isActive = false;
-            }
-        }
+    public void resetNoise() {
+        noise = 0;
     }
 
-    public void draw(Graphics2D g2d) {
-        if (!isActive) return;
-        
-        g2d.setColor(color);
-        g2d.fill(getShape());
+    public boolean isDestroyed() {
+        return noise > NOISE_THRESHOLD;
     }
 
-    protected abstract Shape getShape();
-
-    // Getters and setters
-    public Point2D getPosition() { return position; }
-    public double getNoise() { return noise; }
-    public boolean isActive() { return isActive; }
-    public double getSize() { return size; }
-    public Color getColor() { return color; }
+    public abstract void draw(Graphics2D g2d);
+    public abstract double getSize();
+    public abstract int getReward();
 } 
