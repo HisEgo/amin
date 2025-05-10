@@ -1,6 +1,7 @@
 package com.networkgame.ui;
 
 import com.networkgame.model.*;
+import com.networkgame.controller.GameController;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -15,9 +16,13 @@ public class GamePanel extends JPanel implements MouseListener, MouseMotionListe
     private long lastUpdateTime;
     private boolean isShopOpen;
     private JDialog shopDialog;
+    private GameController controller;
+    private boolean[] activeEffects = new boolean[3]; // Atar, Airyaman, Anahita
+    private long[] effectEndTimes = new long[3];
 
-    public GamePanel() {
-        gameState = new GameState();
+    public GamePanel(GameController controller) {
+        this.controller = controller;
+        this.gameState = new GameState();
         setPreferredSize(new Dimension(800, 600));
         setBackground(Color.WHITE);
         addMouseListener(this);
@@ -32,6 +37,7 @@ public class GamePanel extends JPanel implements MouseListener, MouseMotionListe
             double deltaTime = (currentTime - lastUpdateTime) / 1_000_000_000.0;
             lastUpdateTime = currentTime;
             
+            updateEffects(currentTime);
             gameState.update(deltaTime);
             repaint();
         });
@@ -56,6 +62,14 @@ public class GamePanel extends JPanel implements MouseListener, MouseMotionListe
         gameState.addSystem(targetSystem);
     }
 
+    private void updateEffects(long currentTime) {
+        for (int i = 0; i < activeEffects.length; i++) {
+            if (activeEffects[i] && currentTime > effectEndTimes[i]) {
+                activeEffects[i] = false;
+            }
+        }
+    }
+
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -72,6 +86,8 @@ public class GamePanel extends JPanel implements MouseListener, MouseMotionListe
         // Draw systems
         for (NetworkSystem system : gameState.getSystems()) {
             system.draw(g2d);
+            drawSystemIndicator(g2d, system);
+            drawStoredPackets(g2d, system);
         }
 
         // Draw packets
@@ -103,6 +119,44 @@ public class GamePanel extends JPanel implements MouseListener, MouseMotionListe
         // Draw game over screen
         if (gameState.isGameOver()) {
             drawGameOver(g2d);
+        }
+    }
+
+    private void drawSystemIndicator(Graphics2D g2d, NetworkSystem system) {
+        if (system.isReferenceSystem()) {
+            g2d.setColor(Color.GREEN);
+            g2d.fillOval(
+                (int)system.getBounds().getX() + system.getBounds().width - 20,
+                (int)system.getBounds().getY() - 20,
+                20, 20
+            );
+        }
+    }
+
+    private void drawStoredPackets(Graphics2D g2d, NetworkSystem system) {
+        int storedCount = system.getStoredPackets().size();
+        if (storedCount > 0) {
+            g2d.setColor(Color.BLACK);
+            g2d.setFont(new Font("Arial", Font.BOLD, 14));
+            g2d.drawString("Stored: " + storedCount, 
+                (int)system.getBounds().getX(),
+                (int)system.getBounds().getY() - 5);
+        }
+    }
+
+    private void drawActiveEffects(Graphics2D g2d) {
+        int y = 100;
+        if (activeEffects[0]) { // Atar
+            g2d.setColor(Color.RED);
+            g2d.drawString("Atar Active", 10, y);
+        }
+        if (activeEffects[1]) { // Airyaman
+            g2d.setColor(Color.BLUE);
+            g2d.drawString("Airyaman Active", 10, y + 20);
+        }
+        if (activeEffects[2]) { // Anahita
+            g2d.setColor(Color.GREEN);
+            g2d.drawString("Anahita Active", 10, y + 40);
         }
     }
 
@@ -205,15 +259,25 @@ public class GamePanel extends JPanel implements MouseListener, MouseMotionListe
     }
 
     private void applyShopEffect(String itemName) {
+        long currentTime = System.nanoTime();
         switch (itemName) {
             case "Atar (3 coins)":
-                gameState.applyAtar();
+                activeEffects[0] = true;
+                effectEndTimes[0] = currentTime + 10_000_000_000L; // 10 seconds
+                controller.playSound("atar");
                 break;
             case "Airyaman (4 coins)":
-                gameState.applyAiryaman();
+                activeEffects[1] = true;
+                effectEndTimes[1] = currentTime + 5_000_000_000L; // 5 seconds
+                controller.playSound("airyaman");
                 break;
             case "Anahita (5 coins)":
-                gameState.applyAnahita();
+                activeEffects[2] = true;
+                effectEndTimes[2] = currentTime + 1_000_000_000L; // 1 second
+                controller.playSound("anahita");
+                for (Packet packet : gameState.getActivePackets()) {
+                    packet.resetNoise();
+                }
                 break;
         }
     }
@@ -223,20 +287,6 @@ public class GamePanel extends JPanel implements MouseListener, MouseMotionListe
         gameState.setPaused(false);
         if (shopDialog != null) {
             shopDialog.dispose();
-        }
-    }
-
-    private void drawActiveEffects(Graphics2D g2d) {
-        int y = 120; // Start below the HUD
-        g2d.setFont(new Font("Arial", Font.BOLD, 14));
-        
-        if (gameState.isImpactWavesDisabled()) {
-            g2d.setColor(new Color(255, 0, 0, 128));
-            g2d.drawString("Atar Active", 10, y);
-        }
-        if (gameState.isCollisionsDisabled()) {
-            g2d.setColor(new Color(0, 255, 0, 128));
-            g2d.drawString("Airyaman Active", 10, y += 20);
         }
     }
 

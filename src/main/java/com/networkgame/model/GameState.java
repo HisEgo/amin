@@ -22,11 +22,6 @@ public class GameState {
     private static final double PACKET_SPAWN_INTERVAL = 2.0; // seconds
     private static final double IMPACT_RADIUS = 20.0;
     private static final double IMPACT_FORCE = 0.5;
-    private boolean impactWavesDisabled;
-    private boolean collisionsDisabled;
-    private double effectTimer;
-    private static final double ATAR_DURATION = 10.0;
-    private static final double AIRYAMAN_DURATION = 5.0;
 
     public GameState() {
         this.systems = new ArrayList<>();
@@ -47,15 +42,6 @@ public class GameState {
     public void update(double deltaTime) {
         if (isPaused || isGameOver) return;
 
-        // Update effect timers
-        if (effectTimer > 0) {
-            effectTimer -= deltaTime;
-            if (effectTimer <= 0) {
-                impactWavesDisabled = false;
-                collisionsDisabled = false;
-            }
-        }
-
         // Update temporal progress
         temporalProgress = Math.min(1.0, temporalProgress + deltaTime * 0.1);
 
@@ -74,7 +60,7 @@ public class GameState {
         // Update all packets and check collisions
         List<Packet> packetsToRemove = new ArrayList<>();
         for (Packet packet : activePackets) {
-            packet.update(deltaTime);
+            packet.update();
             
             // Check if packet reached its destination
             if (!packet.isActive()) {
@@ -88,11 +74,9 @@ public class GameState {
             }
 
             // Check for collisions with other packets
-            if (!collisionsDisabled) {
-                for (Packet otherPacket : activePackets) {
-                    if (packet != otherPacket && packet.isActive() && otherPacket.isActive()) {
-                        checkCollision(packet, otherPacket);
-                    }
+            for (Packet otherPacket : activePackets) {
+                if (packet != otherPacket && packet.isActive() && otherPacket.isActive()) {
+                    checkCollision(packet, otherPacket);
                 }
             }
         }
@@ -181,17 +165,7 @@ public class GameState {
             // Apply impact to both packets
             packet1.applyImpact(impactForce, packet2.getPosition());
             packet2.applyImpact(impactForce, packet1.getPosition());
-
-            // Create impact wave if not disabled
-            if (!impactWavesDisabled) {
-                createImpactWave(packet1.getPosition());
-            }
         }
-    }
-
-    private void createImpactWave(Point2D center) {
-        // Visual representation of impact wave
-        // This will be handled by the UI layer
     }
 
     private boolean isPacketAtDestination(Packet packet) {
@@ -270,21 +244,4 @@ public class GameState {
     public void setPaused(boolean paused) { isPaused = paused; }
     public int getTotalPackets() { return totalPackets; }
     public int getSuccessfulPackets() { return successfulPackets; }
-
-    // Shop effect methods
-    public void applyAtar() {
-        impactWavesDisabled = true;
-        effectTimer = ATAR_DURATION;
-    }
-
-    public void applyAiryaman() {
-        collisionsDisabled = true;
-        effectTimer = AIRYAMAN_DURATION;
-    }
-
-    public void applyAnahita() {
-        for (Packet packet : activePackets) {
-            packet.resetNoise();
-        }
-    }
 } 
