@@ -3,14 +3,16 @@ package com.networkgame.model;
 import java.awt.*;
 import java.awt.geom.Rectangle2D;
 import java.awt.geom.Path2D;
+import java.awt.geom.Point2D;
 
 public class Port {
     private double x, y;
     private PortType type;
     private boolean isOccupied;
     private static final double SIZE = 10;
+    private NetworkSystem parentSystem;
 
-    public Port(double x, double y, PortType type) {
+    public Port(double x, double y, PortType type, boolean isInput) {
         this.x = x;
         this.y = y;
         this.type = type;
@@ -59,5 +61,17 @@ public class Port {
 
     public PortType getType() {
         return type;
+    }
+
+    public NetworkSystem getParentSystem() {
+        return parentSystem;
+    }
+
+    public void setParentSystem(NetworkSystem parentSystem) {
+        this.parentSystem = parentSystem;
+    }
+
+    public Point2D getPosition() {
+        return new Point2D.Double(x, y);
     }
 } 

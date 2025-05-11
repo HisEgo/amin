@@ -13,6 +13,8 @@ public abstract class Packet {
     protected double noise;
     protected Port targetPort;
     protected boolean isMoving;
+    protected double size;
+    protected Color color;
     protected static final double IMPACT_THRESHOLD = 0.5;
     protected static final double NOISE_THRESHOLD = 1.0;
     protected static final double IMPACT_RADIUS = 50.0;
@@ -22,8 +24,10 @@ public abstract class Packet {
         this.x = x;
         this.y = y;
         this.targetPort = targetPort;
-        this.targetX = targetPort.getX();
-        this.targetY = targetPort.getY();
+        if (targetPort != null) {
+            this.targetX = targetPort.getX();
+            this.targetY = targetPort.getY();
+        }
         this.noise = 0;
         this.isMoving = true;
         this.speed = 0;
@@ -90,7 +94,42 @@ public abstract class Packet {
         return noise > NOISE_THRESHOLD;
     }
 
-    public abstract void draw(Graphics2D g2d);
-    public abstract double getSize();
-    public abstract int getReward();
+    public boolean isMoving() {
+        return isMoving;
+    }
+
+    public Port getTargetPort() {
+        return targetPort;
+    }
+
+    public void setTargetPort(Port targetPort) {
+        this.targetPort = targetPort;
+        if (targetPort != null) {
+            this.targetX = targetPort.getX();
+            this.targetY = targetPort.getY();
+        }
+    }
+
+    public double getX() {
+        return x;
+    }
+
+    public double getY() {
+        return y;
+    }
+
+    public double getSize() {
+        return size;
+    }
+
+    public int getReward() {
+        return 1; // Base reward
+    }
+
+    public void draw(Graphics2D g2d) {
+        g2d.setColor(color);
+        g2d.fill(getShape());
+    }
+
+    protected abstract Shape getShape();
 } 

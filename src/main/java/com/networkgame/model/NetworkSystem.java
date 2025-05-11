@@ -33,23 +33,27 @@ public class NetworkSystem {
         // Add input ports on the left side
         for (int i = 0; i < 3; i++) {
             PortType type = i % 2 == 0 ? PortType.SQUARE : PortType.TRIANGLE;
-            inputPorts.add(new Port(
+            Port port = new Port(
                 bounds.getX(),
                 bounds.getY() + (bounds.getHeight() / 4) * (i + 1),
                 type,
                 true
-            ));
+            );
+            port.setParentSystem(this);
+            inputPorts.add(port);
         }
 
         // Add output ports on the right side
         for (int i = 0; i < 3; i++) {
             PortType type = i % 2 == 0 ? PortType.SQUARE : PortType.TRIANGLE;
-            outputPorts.add(new Port(
+            Port port = new Port(
                 bounds.getMaxX(),
                 bounds.getY() + (bounds.getHeight() / 4) * (i + 1),
                 type,
                 false
-            ));
+            );
+            port.setParentSystem(this);
+            outputPorts.add(port);
         }
     }
 
@@ -117,6 +121,24 @@ public class NetworkSystem {
         for (Port port : outputPorts) {
             port.draw(g2d);
         }
+    }
+
+    public Port findAvailableOutputPort() {
+        for (Port port : outputPorts) {
+            if (!port.isOccupied()) {
+                return port;
+            }
+        }
+        return null;
+    }
+
+    public boolean hasAvailableOutputPort() {
+        for (Port port : outputPorts) {
+            if (!port.isOccupied()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // Getters and setters

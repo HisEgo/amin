@@ -18,6 +18,7 @@ public class GameState {
     private static final double PACKET_SPAWN_INTERVAL = 2.0;
     private static final double IMPACT_WAVE_DURATION = 0.5;
     private List<ImpactWave> activeImpactWaves;
+    private boolean isGameOver;
 
     public GameState() {
         systems = new ArrayList<>();
@@ -31,6 +32,7 @@ public class GameState {
         coins = 0;
         packetSpawnTimer = 0.0;
         isPaused = false;
+        isGameOver = false;
     }
 
     public void update(double deltaTime) {
@@ -77,6 +79,11 @@ public class GameState {
             if (packet.isDestroyed()) {
                 packetIterator.remove();
             }
+        }
+
+        // Check for game over condition
+        if (getPacketLoss() > 50) {
+            isGameOver = true;
         }
     }
 
@@ -170,6 +177,15 @@ public class GameState {
 
     public void setTemporalProgress(double progress) {
         temporalProgress = progress;
+    }
+
+    public int getPacketLoss() {
+        if (totalPackets == 0) return 0;
+        return (int)((double)(totalPackets - successfulPackets) / totalPackets * 100);
+    }
+
+    public boolean isGameOver() {
+        return isGameOver;
     }
 
     // Getters
