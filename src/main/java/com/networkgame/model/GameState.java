@@ -19,13 +19,16 @@ public class GameState {
     private static final double IMPACT_WAVE_DURATION = 0.5;
     private List<ImpactWave> activeImpactWaves;
     private boolean isGameOver;
+    private double gameTimer;
+    private static final double GAME_DURATION = 120.0; // 120 seconds
+    private boolean allSystemsActive;
 
     public GameState() {
         systems = new ArrayList<>();
         connections = new ArrayList<>();
         activePackets = new ArrayList<>();
         activeImpactWaves = new ArrayList<>();
-        remainingWireLength = 1000.0;
+        remainingWireLength = 5000.0; // Initial wire length for level 1
         temporalProgress = 0.0;
         totalPackets = 0;
         successfulPackets = 0;
@@ -33,10 +36,19 @@ public class GameState {
         packetSpawnTimer = 0.0;
         isPaused = false;
         isGameOver = false;
+        gameTimer = GAME_DURATION;
+        allSystemsActive = false;
     }
 
     public void update(double deltaTime) {
         if (isPaused) return;
+
+        // Update game timer
+        gameTimer -= deltaTime;
+        if (gameTimer <= 0) {
+            isGameOver = true;
+            return;
+        }
 
         // Update temporal progress
         temporalProgress = Math.max(0, Math.min(1, temporalProgress));
@@ -44,11 +56,22 @@ public class GameState {
         // Update impact waves
         updateImpactWaves(deltaTime);
 
-        // Spawn new packets
-        packetSpawnTimer += deltaTime;
-        if (packetSpawnTimer >= PACKET_SPAWN_INTERVAL) {
-            packetSpawnTimer = 0;
-            spawnPacket();
+        // Check if all systems are active
+        allSystemsActive = true;
+        for (NetworkSystem system : systems) {
+            if (!system.isIndicatorOn()) {
+                allSystemsActive = false;
+                break;
+            }
+        }
+
+        // Only spawn new packets if all systems are active
+        if (allSystemsActive) {
+            packetSpawnTimer += deltaTime;
+            if (packetSpawnTimer >= PACKET_SPAWN_INTERVAL) {
+                packetSpawnTimer = 0;
+                spawnPacket();
+            }
         }
 
         // Update systems

@@ -166,6 +166,7 @@ public class GamePanel extends JPanel implements MouseListener, MouseMotionListe
         
         int y = 20;
         g2d.drawString("Wire Length: " + (int)gameState.getRemainingWireLength(), 10, y);
+        g2d.drawString("Time Remaining: " + (int)gameState.getRemainingTime() + "s", 10, y += 20);
         g2d.drawString("Temporal Progress: " + (int)(gameState.getTemporalProgress() * 100) + "%", 10, y += 20);
         g2d.drawString("Packet Loss: " + gameState.getPacketLoss() + "%", 10, y += 20);
         g2d.drawString("Coins: " + gameState.getCoins(), 10, y += 20);
@@ -303,6 +304,15 @@ public class GamePanel extends JPanel implements MouseListener, MouseMotionListe
                     }
                 }
             }
+        } else if (e.getButton() == MouseEvent.BUTTON3) {
+            // Right click to remove connection
+            for (Connection connection : gameState.getConnections()) {
+                if (isPointNearLine(e.getPoint(), connection.getLine())) {
+                    gameState.removeConnection(connection);
+                    repaint();
+                    return;
+                }
+            }
         }
     }
 
@@ -325,6 +335,11 @@ public class GamePanel extends JPanel implements MouseListener, MouseMotionListe
 
     private boolean isPointNearPort(Point point, Port port) {
         return point.distance(port.getX(), port.getY()) < 10;
+    }
+
+    private boolean isPointNearLine(Point point, Line2D line) {
+        double distance = line.ptLineDist(point.getX(), point.getY());
+        return distance < 5; // 5 pixels threshold
     }
 
     // Required interface methods

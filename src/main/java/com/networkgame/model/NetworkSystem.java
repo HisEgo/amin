@@ -16,6 +16,7 @@ public class NetworkSystem {
     private static final int MAX_STORED_PACKETS = 5;
     private boolean isActive;
     private Color color;
+    private boolean indicatorOn;
 
     public NetworkSystem(double x, double y, double width, double height, boolean isReferenceSystem) {
         this.bounds = new Rectangle2D.Double(x, y, width, height);
@@ -23,45 +24,58 @@ public class NetworkSystem {
         this.inputPorts = new ArrayList<>();
         this.outputPorts = new ArrayList<>();
         this.storedPackets = new LinkedList<>();
-        this.isActive = true;
+        this.isActive = false;
         this.color = new Color(200, 200, 200);
-        
-        initializePorts();
+        this.indicatorOn = false;
     }
 
-    private void initializePorts() {
-        // Add input ports on the left side
-        for (int i = 0; i < 3; i++) {
-            PortType type = i % 2 == 0 ? PortType.SQUARE : PortType.TRIANGLE;
-            Port port = new Port(
-                bounds.getX(),
-                bounds.getY() + (bounds.getHeight() / 4) * (i + 1),
-                type,
-                true
-            );
-            port.setParentSystem(this);
-            inputPorts.add(port);
-        }
+    public void addInputPort(PortType type) {
+        Port port = new Port(
+            bounds.getX(),
+            bounds.getY() + (bounds.getHeight() / (inputPorts.size() + 2)) * (inputPorts.size() + 1),
+            type,
+            true
+        );
+        port.setParentSystem(this);
+        inputPorts.add(port);
+    }
 
-        // Add output ports on the right side
-        for (int i = 0; i < 3; i++) {
-            PortType type = i % 2 == 0 ? PortType.SQUARE : PortType.TRIANGLE;
-            Port port = new Port(
-                bounds.getMaxX(),
-                bounds.getY() + (bounds.getHeight() / 4) * (i + 1),
-                type,
-                false
-            );
-            port.setParentSystem(this);
-            outputPorts.add(port);
-        }
+    public void addOutputPort(PortType type) {
+        Port port = new Port(
+            bounds.getMaxX(),
+            bounds.getY() + (bounds.getHeight() / (outputPorts.size() + 2)) * (outputPorts.size() + 1),
+            type,
+            false
+        );
+        port.setParentSystem(this);
+        outputPorts.add(port);
     }
 
     public void update() {
-        if (!isActive) return;
+        // Check if all ports are connected
+        boolean allInputsConnected = true;
+        boolean allOutputsConnected = true;
 
-        // Process stored packets
-        if (!storedPackets.isEmpty()) {
+        for (Port port : inputPorts) {
+            if (!port.isOccupied()) {
+                allInputsConnected = false;
+                break;
+            }
+        }
+
+        for (Port port : outputPorts) {
+            if (!port.isOccupied()) {
+                allOutputsConnected = false;
+                break;
+            }
+        }
+
+        // Update system active state
+        isActive = allInputsConnected && allOutputsConnected;
+        indicatorOn = isActive;
+
+        // Process stored packets if system is active
+        if (isActive && !storedPackets.isEmpty()) {
             Packet packet = storedPackets.peek();
             Port outputPort = findCompatibleOutputPort(packet);
             if (outputPort != null && !outputPort.isOccupied()) {
@@ -70,6 +84,64 @@ public class NetworkSystem {
                 packet.setTargetPort(outputPort);
             }
         }
+    }
+
+    public void draw(Graphics2D g2d) {
+        // Draw system body
+        g2d.setColor(isReferenceSystem ? new Color(200, 200, 255) : new Color(240, 240, 240));
+        g2d.fill(bounds);
+        g2d.setColor(Color.BLACK);
+        g2d.draw(bounds);
+
+        // Draw ports
+        for (Port port : inputPorts) {
+            port.draw(g2d);
+        }
+        for (Port port : outputPorts) {
+            port.draw(g2d);
+        }
+
+        // Draw indicator
+        if (indicatorOn) {
+            g2d.setColor(Color.GREEN);
+            g2d.fillOval(
+                (int)bounds.getX() + bounds.width - 20,
+                (int)bounds.getY() - 20,
+                20, 20
+            );
+        }
+    }
+
+    public boolean isIndicatorOn() {
+        return indicatorOn;
+    }
+
+    public boolean canStorePacket() {
+        return storedPackets.size() < MAX_STORED_PACKETS;
+    }
+
+    public void storePacket(Packet packet) {
+        if (canStorePacket()) {
+            storedPackets.add(packet);
+        }
+    }
+
+    public Port findAvailableOutputPort() {
+        for (Port port : outputPorts) {
+            if (!port.isOccupied()) {
+                return port;
+            }
+        }
+        return null;
+    }
+
+    public boolean hasAvailableOutputPort() {
+        for (Port port : outputPorts) {
+            if (!port.isOccupied()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private Port findCompatibleOutputPort(Packet packet) {
@@ -93,50 +165,6 @@ public class NetworkSystem {
             return port.getType() == PortType.SQUARE;
         } else if (packet instanceof TrianglePacket) {
             return port.getType() == PortType.TRIANGLE;
-        }
-        return false;
-    }
-
-    public boolean canStorePacket() {
-        return storedPackets.size() < MAX_STORED_PACKETS;
-    }
-
-    public void storePacket(Packet packet) {
-        if (canStorePacket()) {
-            storedPackets.add(packet);
-        }
-    }
-
-    public void draw(Graphics2D g2d) {
-        // Draw system body
-        g2d.setColor(isReferenceSystem ? new Color(200, 200, 255) : new Color(240, 240, 240));
-        g2d.fill(bounds);
-        g2d.setColor(Color.BLACK);
-        g2d.draw(bounds);
-
-        // Draw ports
-        for (Port port : inputPorts) {
-            port.draw(g2d);
-        }
-        for (Port port : outputPorts) {
-            port.draw(g2d);
-        }
-    }
-
-    public Port findAvailableOutputPort() {
-        for (Port port : outputPorts) {
-            if (!port.isOccupied()) {
-                return port;
-            }
-        }
-        return null;
-    }
-
-    public boolean hasAvailableOutputPort() {
-        for (Port port : outputPorts) {
-            if (!port.isOccupied()) {
-                return true;
-            }
         }
         return false;
     }

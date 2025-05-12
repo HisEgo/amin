@@ -113,40 +113,50 @@ public class GameController {
 
     private void initializeLevel(int level) {
         gameState = new GameState();
+        LevelConfig levelConfig = new LevelConfig(level);
         
-        switch (level) {
-            case 1:
-                // Level 1: Simple network with 2 reference systems and 2 intermediate systems
-                NetworkSystem source1 = new NetworkSystem(50, 200, 100, 200, true);
-                NetworkSystem target1 = new NetworkSystem(650, 200, 100, 200, true);
-                NetworkSystem intermediate1 = new NetworkSystem(250, 150, 100, 200, false);
-                NetworkSystem intermediate2 = new NetworkSystem(450, 250, 100, 200, false);
+        // Set initial wire length
+        gameState.setRemainingWireLength(levelConfig.getInitialWireLength());
+        
+        // Create systems
+        for (LevelConfig.SystemConfig sysConfig : levelConfig.getSystems()) {
+            NetworkSystem system = new NetworkSystem(
+                sysConfig.getX(),
+                sysConfig.getY(),
+                100, 200,
+                sysConfig.isReference()
+            );
+            
+            // Configure ports
+            for (PortType type : sysConfig.getInputPorts()) {
+                system.addInputPort(type);
+            }
+            for (PortType type : sysConfig.getOutputPorts()) {
+                system.addOutputPort(type);
+            }
+            
+            gameState.addSystem(system);
+        }
+        
+        // Initialize packets
+        for (LevelConfig.PacketConfig packetConfig : levelConfig.getPackets()) {
+            NetworkSystem targetSystem = null;
+            if (packetConfig.getSystemId() > 0) {
+                targetSystem = gameState.getSystems().get(packetConfig.getSystemId() - 1);
+            }
+            
+            for (int i = 0; i < packetConfig.getCount(); i++) {
+                Packet packet;
+                if (packetConfig.getType() == PortType.SQUARE) {
+                    packet = new SquarePacket(0, 0, null);
+                } else {
+                    packet = new TrianglePacket(0, 0, null);
+                }
                 
-                gameState.addSystem(source1);
-                gameState.addSystem(intermediate1);
-                gameState.addSystem(intermediate2);
-                gameState.addSystem(target1);
-                break;
-
-            case 2:
-                // Level 2: More complex network with 3 reference systems and 4 intermediate systems
-                NetworkSystem source2 = new NetworkSystem(50, 150, 100, 200, true);
-                NetworkSystem target2 = new NetworkSystem(650, 150, 100, 200, true);
-                NetworkSystem target3 = new NetworkSystem(650, 350, 100, 200, true);
-                
-                NetworkSystem intermediate3 = new NetworkSystem(200, 100, 100, 200, false);
-                NetworkSystem intermediate4 = new NetworkSystem(350, 200, 100, 200, false);
-                NetworkSystem intermediate5 = new NetworkSystem(500, 300, 100, 200, false);
-                NetworkSystem intermediate6 = new NetworkSystem(200, 400, 100, 200, false);
-                
-                gameState.addSystem(source2);
-                gameState.addSystem(intermediate3);
-                gameState.addSystem(intermediate4);
-                gameState.addSystem(intermediate5);
-                gameState.addSystem(intermediate6);
-                gameState.addSystem(target2);
-                gameState.addSystem(target3);
-                break;
+                if (targetSystem != null) {
+                    targetSystem.storePacket(packet);
+                }
+            }
         }
     }
 
